@@ -10,7 +10,7 @@ def calcular_angulo(a, b, c):
     
     # Calculamos los radianes con atan2
     radianes = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
-    angulo = np.abs(radianes * 180.0 / np.pi)
+    angulo = np.abs(radianes * 180.0/np.pi)
     
     # Nos aseguramos que el ángulo no exceda los 180 grados (típico en kinesiología)
     if angulo > 180.0:
@@ -66,3 +66,4 @@ while cap.isOpened():
 
 cap.release()
 cv2.closeAllWindows()
+#hola
