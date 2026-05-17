@@ -1,7 +1,7 @@
 # Tamizaje Kinésico Escolar 🦴
 Sistema de evaluación postural con visión artificial para jornadas de tamizaje en colegios.
 
-**Desarrollado por:** Estudiantes de Ingeniería Civil Informática — UNC Coquimbo · 2025
+**Desarrollado por:** 2 Estudiantes de Ingeniería Civil Informática — UCN Coquimbo · 2026
 
 ---
 
@@ -78,13 +78,13 @@ El sistema usa la hoja carta como regla:
 
 ---
 
-## Deploy en Streamlit Cloud (gratis)
+## Deploy en Streamlit Cloud 
 
 1. Subir el proyecto a GitHub
 2. Ir a [share.streamlit.io](https://share.streamlit.io)
 3. Conectar el repositorio
 4. Seleccionar `app.py` como archivo principal
-5. ¡Listo! Tendrán una URL pública para compartir
+5. URL pública para compartir
 
 ---
 
