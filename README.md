@@ -64,7 +64,7 @@ tamizaje_kinesico/
 ## Cómo tomar la fotografía
 
 1. El alumno se para de frente a la cámara, brazos a los costados
-2. Sostiene una **hoja carta** (21.59 cm) pegada al cuerpo
+2. Sostiene el **objeto de calibración impreso en 3D** (28.0 cm de ancho) pegado al cuerpo
 3. La foto debe incluir figura completa: cabeza hasta pies
 4. Buena iluminación frontal, sin contraluz
 5. Distancia recomendada: 2 a 3 metros
@@ -73,10 +73,10 @@ tamizaje_kinesico/
 
 ## Calibración
 
-El sistema usa la hoja carta como regla:
-- En la app, ajusta el slider "Ancho de la hoja en la foto (píxeles)"
-- Eso calcula automáticamente cuántos centímetros mide cada píxel
-- Si no hay hoja carta, puedes ingresar el factor manualmente
+El sistema usa la impresión 3D rígida como regla de control:
+- En la app, ajusta el slider "Ancho del objeto 3D en la foto (píxeles)"
+- El software divide los **28.0 cm** reales por los píxeles marcados para obtener la escala exacta.
+- Esto mitiga errores de perspectiva en comparación con la hoja de papel tradicional.
 
 ---
 

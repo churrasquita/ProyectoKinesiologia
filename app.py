@@ -148,7 +148,7 @@ with st.expander("📋 Instrucciones de captura", expanded=False):
     with col1:
         st.markdown("""
         <div class="step-box"><div class="step-num">1</div><div>El alumno debe pararse de frente a la cámara, con los brazos a los lados.</div></div>
-        <div class="step-box"><div class="step-num">2</div><div>Sostener una <b>hoja carta</b> (21.59 cm) pegada al cuerpo, con ambas manos.</div></div>
+        <div class="step-box"><div class="step-num">2</div><div>Sostener el <b>objeto de calibración 3D</b> (28.0 cm de ancho) pegado al cuerpo.</div></div>
         <div class="step-box"><div class="step-num">3</div><div>La foto debe incluir la figura completa: cabeza hasta pies.</div></div>
         """, unsafe_allow_html=True)
     with col2:
@@ -200,10 +200,10 @@ if foto is not None:
             st.image(imagen_anotada, use_container_width=True)
 
             # Calibración con hoja carta
-            st.markdown("**Calibración con hoja carta**")
-            st.info("Haz clic en las dos esquinas superiores de la hoja carta para calibrar.")
+            st.markdown("**Calibración con objeto de referencia 3D**")
+            st.info("Ajusta el slider al ancho ocupado por la impresión 3D en la imagen.")
 
-            usar_escala_manual = st.checkbox("Ingresar escala manualmente (si no hay hoja carta)")
+            usar_escala_manual = st.checkbox("Ingresar escala manualmente (si no está el objeto 3D)")
             if usar_escala_manual:
                 factor_escala = st.slider(
                     "Factor de escala (cm/píxel) — ajusta hasta que las medidas sean lógicas",
@@ -212,11 +212,12 @@ if foto is not None:
                 )
             else:
                 h, w = imagen_rgb.shape[:2]
-                ancho_hoja_px = st.slider(
-                    "Ancho de la hoja carta en la foto (píxeles)",
+                ancho_objeto_px = st.slider(
+                    "Ancho del objeto 3D en la foto (píxeles)",
                     min_value=50, max_value=w, value=int(w * 0.2), step=1
                 )
-                factor_escala = 21.59 / ancho_hoja_px
+                # Cambiado de 21.59 a 28.0 cm para la calibración horizontal
+                factor_escala = 28.0 / ancho_objeto_px
                 st.caption(f"Factor calculado: {factor_escala:.4f} cm/píxel")
 
     with col_res:

@@ -1,0 +1,16 @@
+# Entornos virtuales
+venv/
+ENV/
+env/
+
+# Archivos compilados de Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos grandes de modelos (MediaPipe)
+*.task
+
+# Configuraciones locales de VS Code (Opcional, pero recomendado)
+.vscode/
