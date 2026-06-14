@@ -18,19 +18,22 @@ Sistema de evaluación postural con visión artificial para jornadas de tamizaje
 
 ---
 
-## Instalación
+## Instalación y Ejecución
 
-### Requisitos previos
-- Python 3.10 o superior
-- pip actualizado
+Tienes dos opciones para ejecutar este proyecto en tu máquina:
 
-### Pasos
+### Opción A: Ejecución nativa con Python
 
+#### Requisitos previos
+- Python 3.10 o superior.
+- El archivo del modelo de MediaPipe `pose_landmarker_full.task` descargado en la raíz del proyecto.
+
+#### Pasos
 ```bash
 # 1. Clonar o descargar el proyecto
-cd tamizaje_kinesico
+cd ProyectoKinesiologia
 
-# 2. (Recomendado) Crear entorno virtual
+# 2. Crear entorno virtual (Recomendado)
 python -m venv venv
 source venv/bin/activate        # Mac/Linux
 venv\Scripts\activate           # Windows
@@ -40,12 +43,26 @@ pip install -r requirements.txt
 
 # 4. Ejecutar la app
 streamlit run app.py
-```
+
 
 El navegador se abre automáticamente en `http://localhost:8501`
 
 ---
+```
+### Opción B: Docker
 
+Esta opción empaqueta automáticamente todas las dependencias del sistema operativo que OpenCV y MediaPipe necesitan, garantizando que el sistema funcione de inmediato.
+
+Requisitos previos:
+Tener instalado y ejecutándose Docker Desktop.
+``` bash
+# 1. Construir la imagen de Docker
+docker build -t proyecto-kinesiologia .
+
+# 2. Ejecutar el contenedor mapeando el puerto de Streamlit
+docker run -p 8501:8501 proyecto-kinesiologia
+
+```
 ## Estructura del proyecto
 
 ```
