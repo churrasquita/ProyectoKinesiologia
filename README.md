@@ -128,11 +128,10 @@ El sistema usa la impresión 3D rígida como regla de control:
 
 ---
 
-## Próximas mejoras (post-junio)
+## Próximas mejoras 
 
 - [ ] Detección automática de la hoja carta con OpenCV
 - [ ] Historial de pacientes con base de datos SQLite
 - [ ] Comparación entre evaluaciones del mismo alumno
 - [ ] Exportar resultados en Excel por curso completo
 - [ ] Modo cámara en tiempo real
->>>>>>> 5c13938cdfd4c6b19f2a6d3a210d7fbf1a596b21
