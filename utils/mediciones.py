@@ -8,6 +8,21 @@ import mediapipe as mp
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python import BaseOptions
 import math
+import os
+import urllib.request
+
+MODELO_PATH = "pose_landmarker_full.task"
+MODELO_URL = (
+    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
+    "pose_landmarker_full/float16/latest/pose_landmarker_full.task"
+)
+
+
+def _asegurar_modelo() -> str:
+    # El .task está en .gitignore, así que en Streamlit Cloud no viene con el repo.
+    if not os.path.exists(MODELO_PATH):
+        urllib.request.urlretrieve(MODELO_URL, MODELO_PATH)
+    return MODELO_PATH
 
 # ── Detección de landmarks con la API Nueva ───────────────────────────────────
 
@@ -16,9 +31,8 @@ def detectar_landmarks(imagen_rgb: np.ndarray):
     Recibe imagen RGB, devuelve (landmarks, imagen_anotada).
     Si no detecta cuerpo, devuelve (None, imagen_original).
     """
-    # Configuración del landmarker apuntando al archivo .task local
     options = vision.PoseLandmarkerOptions(
-        base_options=BaseOptions(model_asset_path="pose_landmarker_full.task"),
+        base_options=BaseOptions(model_asset_path=_asegurar_modelo()),
         running_mode=vision.RunningMode.IMAGE
     )
     
