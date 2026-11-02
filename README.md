@@ -12,7 +12,7 @@ Sistema de evaluación postural con visión artificial para jornadas de tamizaje
 - Detecta automáticamente los puntos clave del cuerpo usando MediaPipe
 - Mide la **asimetría de hombros** (indicador de escoliosis)
 - Mide la **dismetría de miembros inferiores** (diferencia entre piernas)
-- Calcula el **IMC** con clasificación pediátrica (OMS)
+- Calcula el **IMC** y lo clasifica con el puntaje z de IMC-para-la-edad de la OMS (referencia 2007, 5 a 19 años, según sexo y edad)
 - Evalúa la **proyección cervical anterior** (postura del cuello)
 - Genera un **informe PDF** descargable por paciente
 
@@ -68,13 +68,28 @@ docker run -p 8501:8501 proyecto-kinesiologia
 ```
 tamizaje_kinesico/
 ├── app.py                  # Aplicación principal Streamlit
-├── requirements.txt        # Dependencias
+├── requirements.txt        # Dependencias de Python
+├── packages.txt            # Librerías del sistema (Streamlit Cloud)
 ├── README.md
+├── tests/
+│   └── test_mediciones.py  # Pruebas con landmarks sintéticos y tablas OMS
 └── utils/
     ├── __init__.py
     ├── mediciones.py       # Detección de landmarks y cálculos posturales
+    ├── oms_imc.py          # Clasificación del IMC (puntaje z OMS)
+    ├── oms_imc_tablas.py   # Tablas OMS 2007 (generado desde los .xlsx oficiales)
     └── reporte.py          # Generación de PDF con ReportLab
 ```
+
+---
+
+## Pruebas
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Las pruebas no necesitan el modelo `.task` ni cámara: usan landmarks sintéticos.
 
 ---
 
@@ -104,6 +119,8 @@ El sistema usa la impresión 3D rígida como regla de control:
 3. Conectar el repositorio
 4. Seleccionar `app.py` como archivo principal
 5. URL pública para compartir
+
+`packages.txt` instala las librerías del sistema que MediaPipe y OpenCV necesitan en Streamlit Cloud. El modelo `pose_landmarker_full.task` se descarga solo la primera vez si no está en el repositorio.
 
 ---
 

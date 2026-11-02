@@ -107,7 +107,8 @@ with st.sidebar:
 """, unsafe_allow_html=True)
     st.markdown("### Datos del paciente")
     nombre    = st.text_input("Nombre completo")
-    edad      = st.number_input("Edad", min_value=5, max_value=20, value=13)
+    edad      = st.number_input("Edad", min_value=5, max_value=19, value=13)
+    sexo      = st.selectbox("Sexo", ["Femenino", "Masculino"])
     curso     = st.selectbox("Curso", ["7° Básico", "8° Básico", "1° Medio", "2° Medio"])
     colegio   = st.text_input("Colegio")
     peso_kg   = st.number_input("Peso (kg)", min_value=20.0, max_value=150.0, value=50.0, step=0.5)
@@ -177,8 +178,8 @@ if foto is not None:
         calcular_asimetria_hombros,
         calcular_dismetria_piernas,
         calcular_angulo_cervical,
-        clasificar_imc_pediatrico
     )
+    from utils.oms_imc import clasificar_imc_oms
     from utils.reporte import generar_pdf
 
     # Leer imagen
@@ -262,12 +263,12 @@ if foto is not None:
 
             # ── IMC ───────────────────────────────────────────────────────
             imc = peso_kg / ((talla_cm / 100) ** 2)
-            estado_imc, clase_imc = clasificar_imc_pediatrico(imc, edad)
+            estado_imc, clase_imc, z_imc = clasificar_imc_oms(imc, edad, sexo)
             st.markdown(f"""
             <div class="metric-card">
                 <div class="metric-label">IMC</div>
                 <div class="metric-value">{imc:.1f}</div>
-                <div class="metric-sub">{peso_kg} kg · {talla_cm} cm</div>
+                <div class="metric-sub">{peso_kg} kg · {talla_cm} cm · z = {z_imc:+.2f}</div>
                 <span class="{clase_imc}">{estado_imc}</span>
             </div>
             """, unsafe_allow_html=True)
@@ -296,12 +297,14 @@ if foto is not None:
                 datos = {
                     "nombre": nombre or "Sin nombre",
                     "edad": edad,
+                    "sexo": sexo,
                     "curso": curso,
                     "colegio": colegio or "Sin especificar",
                     "peso": peso_kg,
                     "talla": talla_cm,
                     "imc": imc,
                     "estado_imc": estado_imc,
+                    "z_imc": z_imc,
                     "dif_hombros": dif_hombros,
                     "estado_hombros": estado_h,
                     "dif_piernas": dif_piernas,

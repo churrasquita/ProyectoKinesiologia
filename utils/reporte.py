@@ -122,7 +122,7 @@ def generar_pdf(datos: dict, imagen_anotada: np.ndarray) -> bytes:
 
     tabla_datos = Table(
         [
-            ["Nombre",  datos.get("nombre", "—"),  "Edad",   f"{datos.get('edad', '—')} años"],
+            ["Nombre",  datos.get("nombre", "—"),  "Edad",   f"{datos.get('edad', '—')} años · {datos.get('sexo', '—')}"],
             ["Curso",   datos.get("curso", "—"),   "Colegio", datos.get("colegio", "—")],
             ["Peso",    f"{datos.get('peso', '—')} kg", "Talla", f"{datos.get('talla', '—')} cm"],
         ],
@@ -160,7 +160,7 @@ def generar_pdf(datos: dict, imagen_anotada: np.ndarray) -> bytes:
         ],
         [
             "IMC",
-            f"{datos.get('imc', 0):.1f}",
+            f"{datos.get('imc', 0):.1f}" + (f" (z = {datos['z_imc']:+.2f})" if "z_imc" in datos else ""),
             datos.get("estado_imc", "—")
         ],
     ]
