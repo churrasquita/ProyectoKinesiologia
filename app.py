@@ -30,6 +30,7 @@ st.markdown("""
 
     .metric-card {
         background: white;
+        color: #1B2B3A;
         border-radius: 12px;
         padding: 1.2rem 1.5rem;
         border: 1px solid #E8ECF0;
@@ -45,6 +46,7 @@ st.markdown("""
 
     .step-box {
         background: white;
+        color: #1B2B3A;  /* fijo: en modo oscuro Streamlit pone el texto blanco */
         border-radius: 12px;
         padding: 1rem 1.5rem;
         border: 1px solid #E8ECF0;
@@ -71,8 +73,9 @@ st.markdown("""
         border: 2px dashed #BCC8D4;
         border-radius: 12px;
         padding: 1rem;
-        background: white;
+        background: transparent;  /* sigue el tema claro u oscuro */
     }
+    .step-box b, .metric-card b { color: inherit; }
 
     .stButton > button {
         background: #2E86AB;
