@@ -9,7 +9,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -28,21 +28,39 @@ GRIS_BORDE = colors.HexColor("#E8ECF0")
 
 def _color_estado(estado: str):
     """Devuelve el color según el estado del resultado."""
-    if "Normal" in estado:
+    e = estado.lower()
+    if "normal" in e:
         return VERDE_OK
-    elif "Leve" in estado or "Bajo peso" in estado or "Sobrepeso" in estado:
+    elif "severo" in e:
+        return ROJO
+    elif "leve" in e or "bajo peso" in e or "sobrepeso" in e:
         return NARANJA
     else:
         return ROJO
 
 
-def generar_pdf(datos: dict, imagen_anotada: np.ndarray) -> bytes:
+def _imagen_rl(imagen: np.ndarray, ancho_max: float, alto_max: float) -> Image:
+    """Convierte la imagen a un flowable de ReportLab manteniendo la proporción."""
+    pil_img = PIL.Image.fromarray(imagen)
+    img_buffer = io.BytesIO()
+    pil_img.save(img_buffer, format="JPEG", quality=85)
+    img_buffer.seek(0)
+    h, w = imagen.shape[:2]
+    f = min(ancho_max / w, alto_max / h)
+    return Image(img_buffer, width=w * f, height=h * f)
+
+
+def generar_pdf(datos: dict, imagen_frontal: np.ndarray | None,
+                imagen_perfil: np.ndarray | None = None) -> bytes:
     """
     Genera el PDF de informe y lo devuelve como bytes.
 
     datos debe contener:
-        nombre, edad, curso, colegio, peso, talla, imc, estado_imc,
+        nombre, edad, curso, colegio, peso, talla, imc, estado_imc
+    y opcionalmente (si hay foto de frente):
         dif_hombros, estado_hombros, dif_piernas, estado_piernas
+    y (si hay foto de costado):
+        angulo_cervical, estado_cervical
     """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -96,8 +114,8 @@ def generar_pdf(datos: dict, imagen_anotada: np.ndarray) -> bytes:
     # ── Encabezado ────────────────────────────────────────────────────────
     encabezado = Table(
         [[
-            Paragraph("🦴 Tamizaje Kinésico Escolar", estilo_titulo),
-            Paragraph("Universidad Nacional de Coquimbo · 2025", estilo_subtitulo)
+            Paragraph("Tamizaje Kinésico Escolar", estilo_titulo),
+            Paragraph("Universidad Católica del Norte · Sede Coquimbo", estilo_subtitulo)
         ]],
         colWidths=["100%"]
     )
@@ -146,24 +164,30 @@ def generar_pdf(datos: dict, imagen_anotada: np.ndarray) -> bytes:
     # ── Resultados ────────────────────────────────────────────────────────
     elementos.append(Paragraph("Resultados de la evaluación", estilo_seccion))
 
-    resultados = [
-        ["Evaluación", "Valor medido", "Estado"],
-        [
-            "Asimetría de hombros",
-            f"{datos.get('dif_hombros', 0):.1f} cm",
-            datos.get("estado_hombros", "—")
-        ],
-        [
-            "Dismetría de miembros inferiores",
-            f"{datos.get('dif_piernas', 0):.1f} cm",
-            datos.get("estado_piernas", "—")
-        ],
-        [
-            "IMC",
-            f"{datos.get('imc', 0):.1f}" + (f" (z = {datos['z_imc']:+.2f})" if "z_imc" in datos else ""),
-            datos.get("estado_imc", "—")
-        ],
-    ]
+    resultados = [["Evaluación", "Valor medido", "Estado"]]
+    if "dif_hombros" in datos:
+        resultados.append([
+            "Asimetría de hombros (frente)",
+            f"{datos['dif_hombros']:.1f} cm",
+            datos.get("estado_hombros", "—"),
+        ])
+    if "dif_piernas" in datos:
+        resultados.append([
+            "Dismetría de miembros inferiores (frente)",
+            f"{datos['dif_piernas']:.1f} cm",
+            datos.get("estado_piernas", "—"),
+        ])
+    if "angulo_cervical" in datos:
+        resultados.append([
+            "Ángulo cervical (costado)",
+            f"{datos['angulo_cervical']:.1f}°",
+            datos.get("estado_cervical", "—"),
+        ])
+    resultados.append([
+        "IMC",
+        f"{datos.get('imc', 0):.1f}" + (f" (z = {datos['z_imc']:+.2f})" if "z_imc" in datos else ""),
+        datos.get("estado_imc", "—"),
+    ])
 
     tabla_res = Table(resultados, colWidths=[8*cm, 4*cm, 5.5*cm])
     estilos_tabla = [
@@ -186,18 +210,18 @@ def generar_pdf(datos: dict, imagen_anotada: np.ndarray) -> bytes:
     elementos.append(tabla_res)
     elementos.append(Spacer(1, 16))
 
-    # ── Imagen anotada ────────────────────────────────────────────────────
-    elementos.append(Paragraph("Fotografía evaluada", estilo_seccion))
-
-    pil_img = PIL.Image.fromarray(imagen_anotada)
-    img_buffer = io.BytesIO()
-    pil_img.save(img_buffer, format="PNG")
-    img_buffer.seek(0)
-
-    img_rl = Image(img_buffer, width=8*cm, height=12*cm)
-    img_rl.hAlign = "CENTER"
-    elementos.append(img_rl)
-    elementos.append(Spacer(1, 16))
+    # ── Imágenes anotadas ─────────────────────────────────────────────────
+    fotos = [(t, img) for t, img in (("Frente", imagen_frontal), ("Costado", imagen_perfil)) if img is not None]
+    if fotos:
+        celdas = [_imagen_rl(img, 7.5*cm, 11*cm) for _, img in fotos]
+        titulos = [Paragraph(t, estilo_pie) for t, _ in fotos]
+        tabla_img = Table([celdas, titulos], colWidths=[8.5*cm] * len(fotos))
+        tabla_img.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        elementos.append(KeepTogether([Paragraph("Fotografías evaluadas", estilo_seccion), tabla_img]))
+        elementos.append(Spacer(1, 16))
 
     # ── Observaciones ─────────────────────────────────────────────────────
     elementos.append(Paragraph("Observaciones del evaluador", estilo_seccion))

@@ -13,7 +13,8 @@ Sistema de evaluación postural con visión artificial para jornadas de tamizaje
 - Mide la **asimetría de hombros** (indicador de escoliosis)
 - Mide la **dismetría de miembros inferiores** (diferencia entre piernas)
 - Calcula el **IMC** y lo clasifica con el puntaje z de IMC-para-la-edad de la OMS (referencia 2007, 5 a 19 años, según sexo y edad)
-- Evalúa la **proyección cervical anterior** (postura del cuello)
+- Evalúa la **proyección cervical anterior** (postura del cuello) con la foto de costado
+- Calibra las medidas con la **talla del alumno**, sin objeto de referencia
 - Genera un **informe PDF** descargable por paciente
 
 ---
@@ -93,22 +94,26 @@ Las pruebas no necesitan el modelo `.task` ni cámara: usan landmarks sintético
 
 ---
 
-## Cómo tomar la fotografía
+## Cómo tomar las fotografías
 
-1. El alumno se para de frente a la cámara, brazos a los costados
-2. Sostiene el **objeto de calibración impreso en 3D** (28.0 cm de ancho) pegado al cuerpo
-3. La foto debe incluir figura completa: cabeza hasta pies
-4. Buena iluminación frontal, sin contraluz
-5. Distancia recomendada: 2 a 3 metros
+Se piden **dos fotos** por alumno (sugerencia del kinesiólogo asesor). **No se usa objeto de calibración**: se mide solo a la persona.
+
+1. **Foto de frente:** de pie, mirando a la cámara, brazos a los costados → asimetría de hombros y dismetría de miembros inferiores
+2. **Foto de costado:** de pie, de perfil a la cámara, mirada al frente → ángulo cervical (oreja–hombro)
+3. Alumno descalzo, ropa ajustada, cuerpo completo en la foto (cabeza a pies)
+4. Cámara quieta a la altura de la cadera, a 2–3 metros; buena iluminación, sin contraluz
+5. Registrar la talla real (tallímetro) en la barra lateral
 
 ---
 
 ## Calibración
 
-El sistema usa la impresión 3D rígida como regla de control:
-- En la app, ajusta el slider "Ancho del objeto 3D en la foto (píxeles)"
-- El software divide los **28.0 cm** reales por los píxeles marcados para obtener la escala exacta.
-- Esto mitiga errores de perspectiva en comparación con la hoja de papel tradicional.
+La escala píxel → cm se obtiene de la **talla real del alumno**:
+
+- MediaPipe ubica los ojos y la planta del pie; como no marca la coronilla, la altura total en la foto se extrapola sabiendo que los ojos están, en promedio, al 93,5 % de la talla.
+- `factor (cm/píxel) = talla (cm) / altura en la foto (píxeles)`
+- En la app se dibuja una línea amarilla con la altura usada y se puede corregir a mano en "Ajuste manual de la altura detectada".
+- Un error de pocos % en la escala cambia poco las diferencias medidas (p. ej. 3 % de 1,5 cm ≈ 0,05 cm); el error de detección de los puntos pesa más.
 
 ---
 
@@ -127,7 +132,8 @@ El sistema usa la impresión 3D rígida como regla de control:
 ## Limitaciones conocidas
 
 - MediaPipe puede perder precisión con ropa oscura o mala iluminación
-- La calibración manual es aproximada; en versión futura se detectará la hoja automáticamente
+- La altura en la foto se estima desde los ojos (proporción antropométrica promedio), por lo que la escala es aproximada
+- La máscara de segmentación de MediaPipe 0.10.x no se usa: leerla hace caer el proceso
 - Los umbrales clínicos son referenciales; deben validarse con kinesiólogos de la UNC
 - No reemplaza el diagnóstico clínico profesional
 
@@ -147,7 +153,6 @@ El sistema usa la impresión 3D rígida como regla de control:
 
 ## Próximas mejoras 
 
-- [ ] Detección automática de la hoja carta con OpenCV
 - [ ] Historial de pacientes con base de datos SQLite
 - [ ] Comparación entre evaluaciones del mismo alumno
 - [ ] Exportar resultados en Excel por curso completo

@@ -16,7 +16,9 @@ from utils.mediciones import (
     calcular_angulo_cervical,
     calcular_asimetria_hombros,
     calcular_dismetria_piernas,
-    calibrar_con_hoja,
+    altura_persona_px,
+    calibrar_con_talla,
+    lado_visible_perfil,
 )
 from utils.oms_imc import (
     MES_MAX,
@@ -46,12 +48,15 @@ def px(n):
 
 
 class TestCalibracion(unittest.TestCase):
-    def test_factor_de_escala(self):
-        self.assertAlmostEqual(calibrar_con_hoja(280), 0.1)
+    def test_factor_de_escala_por_talla(self):
+        # 150 cm de talla ocupando 1500 px en la foto → 0.1 cm/píxel
+        self.assertAlmostEqual(calibrar_con_talla(150.0, 1500), 0.1)
 
-    def test_ancho_invalido(self):
+    def test_altura_invalida(self):
         with self.assertRaises(ValueError):
-            calibrar_con_hoja(0)
+            calibrar_con_talla(150.0, 0)
+        with self.assertRaises(ValueError):
+            calibrar_con_talla(0, 1500)
 
 
 class TestPosturales(unittest.TestCase):
@@ -79,8 +84,35 @@ class TestPosturales(unittest.TestCase):
         self.assertAlmostEqual(calcular_angulo_cervical(lm, W, H), 45.0)
 
     def test_angulo_cervical_poca_visibilidad(self):
-        lm = landmarks(l7=(0.25, 0.25, 0.2), l11=(0.5, 0.5))
+        lm = landmarks(l7=(0.25, 0.25, 0.2), l11=(0.5, 0.5), l8=(0.25, 0.25, 0.2), l12=(0.5, 0.5, 0.2))
         self.assertIsNone(calcular_angulo_cervical(lm, W, H))
+
+    def test_angulo_cervical_lado_derecho(self):
+        # Foto de costado mirando hacia el otro lado: solo se ve el lado derecho
+        lm = landmarks(
+            l7=(0.5, 0.5, 0.1), l11=(0.5, 0.5, 0.1),
+            l8=(px(768), px(256)), l12=(px(512), px(512)),
+        )
+        self.assertEqual(lado_visible_perfil(lm), (8, 12))
+        self.assertAlmostEqual(calcular_angulo_cervical(lm, W, H), 45.0)
+
+
+class TestAlturaPersona(unittest.TestCase):
+    def test_altura_desde_ojos_a_pies(self):
+        # Ojos en y=100, pies en y=1035 → 935 px ojos-pies → 1000 px de talla
+        lm = landmarks(
+            l2=(0.45, px(100)), l5=(0.55, px(100)),
+            l29=(0.45, px(1030)), l30=(0.55, px(1030)),
+            l31=(0.45, px(1035)), l32=(0.55, px(1035)),
+        )
+        H_ = 2048  # imagen más alta para que los pies queden dentro
+        y_sup, y_inf = altura_persona_px(lm, W, H_)
+        self.assertEqual(y_inf, 2070)
+        self.assertEqual(y_inf - y_sup, 2000)
+
+    def test_sin_pies_visibles(self):
+        lm = landmarks(l29=(0.5, 0.9, 0.0), l30=(0.5, 0.9, 0.0), l31=(0.5, 0.9, 0.0), l32=(0.5, 0.9, 0.0))
+        self.assertIsNone(altura_persona_px(lm, W, H))
 
 
 class TestIMCOMS(unittest.TestCase):

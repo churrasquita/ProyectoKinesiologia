@@ -112,12 +112,10 @@ with st.sidebar:
     curso     = st.selectbox("Curso", ["7° Básico", "8° Básico", "1° Medio", "2° Medio"])
     colegio   = st.text_input("Colegio")
     peso_kg   = st.number_input("Peso (kg)", min_value=20.0, max_value=150.0, value=50.0, step=0.5)
-    talla_cm  = st.number_input("Talla (cm)", min_value=100.0, max_value=220.0, value=155.0, step=0.5)
-
-    st.markdown("---")
-    st.markdown("### Tipo de evaluación")
-    eval_frontal = st.checkbox("Vista frontal (hombros + piernas)", value=True)
-    eval_perfil  = st.checkbox("Vista de perfil (cuello)", value=False)
+    talla_cm  = st.number_input(
+        "Talla (cm)", min_value=100.0, max_value=220.0, value=155.0, step=0.5,
+        help="Medida con tallímetro, sin zapatos. Se usa también para calibrar la foto (píxel → cm)."
+    )
 
     st.markdown("---")
     st.caption("Sistema de Tamizaje Kinésico Escolar\nUCN Coquimbo · 2026")
@@ -148,33 +146,78 @@ with st.expander("📋 Instrucciones de captura", expanded=False):
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
-        <div class="step-box"><div class="step-num">1</div><div>El alumno debe pararse de frente a la cámara, con los brazos a los lados.</div></div>
-        <div class="step-box"><div class="step-num">2</div><div>Sostener el <b>objeto de calibración 3D</b> (28.0 cm de ancho) pegado al cuerpo.</div></div>
-        <div class="step-box"><div class="step-num">3</div><div>La foto debe incluir la figura completa: cabeza hasta pies.</div></div>
+        <div class="step-box"><div class="step-num">1</div><div>Se necesitan <b>dos fotos</b> del alumno: una <b>de frente</b> y una <b>de costado</b>. No se usa ningún objeto de calibración.</div></div>
+        <div class="step-box"><div class="step-num">2</div><div><b>De frente:</b> de pie, mirando a la cámara, brazos a los lados, pies levemente separados.</div></div>
+        <div class="step-box"><div class="step-num">3</div><div><b>De costado:</b> de pie, perfil a la cámara, mirada al frente, brazos relajados.</div></div>
+        <div class="step-box"><div class="step-num">4</div><div>Alumno <b>descalzo</b> y con ropa ajustada; la foto debe incluir el cuerpo completo, de cabeza a pies.</div></div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown("""
-        <div class="step-box"><div class="step-num">4</div><div>Buena iluminación frontal, sin contraluz ni sombras fuertes.</div></div>
-        <div class="step-box"><div class="step-num">5</div><div>Distancia recomendada: 2 a 3 metros entre el alumno y la cámara.</div></div>
-        <div class="step-box"><div class="step-num">6</div><div>Para perfil: repetir el mismo proceso con el alumno de lado.</div></div>
+        <div class="step-box"><div class="step-num">5</div><div>Registrar la <b>talla real</b> (tallímetro) en la barra lateral: con ella se calibran las medidas en cm.</div></div>
+        <div class="step-box"><div class="step-num">6</div><div>Cámara a la altura de la cadera, quieta y recta; distancia de 2 a 3 metros.</div></div>
+        <div class="step-box"><div class="step-num">7</div><div>Buena iluminación frontal, fondo despejado, sin contraluz ni sombras fuertes.</div></div>
+        <div class="step-box"><div class="step-num">8</div><div>Solo una persona en la foto.</div></div>
         """, unsafe_allow_html=True)
 
-# ── Subida de imagen ─────────────────────────────────────────────────────────
-st.markdown("### Subir fotografía")
-foto = st.file_uploader(
-    "Arrastra la foto aquí o haz clic para seleccionar",
-    type=["jpg", "jpeg", "png"],
-    label_visibility="collapsed"
-)
+# ── Subida de imágenes ───────────────────────────────────────────────────────
+st.markdown("### Subir fotografías")
+col_up_f, col_up_p = st.columns(2)
+with col_up_f:
+    st.markdown("**1 · Foto de frente**")
+    foto_frontal = st.file_uploader(
+        "Foto de frente", type=["jpg", "jpeg", "png"],
+        key="foto_frontal", label_visibility="collapsed"
+    )
+with col_up_p:
+    st.markdown("**2 · Foto de costado**")
+    foto_perfil = st.file_uploader(
+        "Foto de costado", type=["jpg", "jpeg", "png"],
+        key="foto_perfil", label_visibility="collapsed"
+    )
 
-# ── Procesamiento ─────────────────────────────────────────────────────────────
-if foto is not None:
+
+def _leer_imagen(archivo):
     import numpy as np
     import cv2
-    import mediapipe as mp
+    from PIL import Image, ImageOps
+
+    # exif_transpose: las fotos de celular vienen giradas según la metadata EXIF
+    img = ImageOps.exif_transpose(Image.open(archivo)).convert("RGB")
+    imagen = np.array(img)
+    # Limitar tamaño para que la detección sea rápida (la escala se calcula sobre esta misma imagen)
+    h, w = imagen.shape[:2]
+    lado_max = 1600
+    if max(h, w) > lado_max:
+        f = lado_max / max(h, w)
+        imagen = cv2.resize(imagen, (int(w * f), int(h * f)), interpolation=cv2.INTER_AREA)
+    return imagen
+
+
+def _tarjeta(titulo, valor, estado, clase, sub=""):
+    # HTML en una sola línea: si queda una línea vacía con sangría, Markdown lo muestra como código
+    sub_html = f'<div class="metric-sub">{sub}</div>' if sub else ""
+    st.markdown(
+        f'<div class="metric-card"><div class="metric-label">{titulo}</div>'
+        f'<div class="metric-value">{valor}</div>{sub_html}'
+        f'<span class="{clase}">{estado}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ── Procesamiento ─────────────────────────────────────────────────────────────
+if foto_frontal is None and foto_perfil is None:
+    st.markdown("""
+    <div style="text-align:center; padding: 3rem; color: #7A8899;">
+        <div style="font-size: 3rem;">📸</div>
+        <p style="font-size: 1rem; margin-top: 0.5rem;">Sube la foto de frente y la foto de costado para comenzar la evaluación</p>
+    </div>
+    """, unsafe_allow_html=True)
+else:
     from utils.mediciones import (
         detectar_landmarks,
-        calibrar_con_hoja,
+        altura_persona_px,
+        calibrar_con_talla,
+        dibujar_altura,
         calcular_asimetria_hombros,
         calcular_dismetria_piernas,
         calcular_angulo_cervical,
@@ -182,146 +225,145 @@ if foto is not None:
     from utils.oms_imc import clasificar_imc_oms
     from utils.reporte import generar_pdf
 
-    # Leer imagen
-    file_bytes = np.asarray(bytearray(foto.read()), dtype=np.uint8)
-    imagen_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-    imagen_rgb = cv2.cvtColor(imagen_bgr, cv2.COLOR_BGR2RGB)
+    datos = {
+        "nombre": nombre or "Sin nombre",
+        "edad": edad,
+        "sexo": sexo,
+        "curso": curso,
+        "colegio": colegio or "Sin especificar",
+        "peso": peso_kg,
+        "talla": talla_cm,
+    }
+    imagen_frontal_pdf = None
+    imagen_perfil_pdf = None
 
-    col_img, col_res = st.columns([1.2, 1])
+    # ── IMC (no depende de las fotos) ────────────────────────────────────
+    imc = peso_kg / ((talla_cm / 100) ** 2)
+    estado_imc, clase_imc, z_imc = clasificar_imc_oms(imc, edad, sexo)
+    datos.update(imc=imc, estado_imc=estado_imc, z_imc=z_imc)
 
-    with col_img:
-        st.markdown("#### Vista con puntos detectados")
+    # ── Vista frontal ────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Vista de frente")
+    if foto_frontal is None:
+        st.warning("Falta la foto de frente: sin ella no se evalúan hombros ni miembros inferiores.")
+    else:
+        imagen_rgb = _leer_imagen(foto_frontal)
+        h, w = imagen_rgb.shape[:2]
+        landmarks, imagen_anotada = detectar_landmarks(imagen_rgb, vista="frontal")
 
-        # Detectar landmarks
-        landmarks, imagen_anotada = detectar_landmarks(imagen_rgb.copy())
-
+        col_img, col_res = st.columns([1.2, 1])
         if landmarks is None:
-            st.error("No se detectó ninguna persona en la imagen. Intenta con otra foto.")
+            with col_img:
+                st.image(imagen_rgb, use_container_width=True)
+            with col_res:
+                st.error("No se detectó ninguna persona en la foto de frente. Intenta con otra foto.")
         else:
-            st.image(imagen_anotada, use_container_width=True)
+            rango = altura_persona_px(landmarks, w, h)
+            with col_res:
+                st.markdown("#### Calibración por talla")
+                if rango is None:
+                    st.error("No se pudo estimar la altura del alumno en la foto: deben verse los ojos y los pies.")
+                    factor_escala = None
+                else:
+                    y_sup, y_inf = rango
+                    altura_px = y_inf - y_sup
+                    with st.expander("Ajuste manual de la altura detectada"):
+                        st.caption("La altura se estima desde los ojos hasta la planta del pie. Corrige solo si la línea amarilla de la imagen no va de la coronilla a los pies.")
+                        y_sup, y_inf = st.slider(
+                            "Desde la cabeza hasta los pies (píxeles, desde arriba)",
+                            min_value=0, max_value=h - 1, value=(int(y_sup), int(y_inf)), step=1,
+                        )
+                        altura_px = max(1, y_inf - y_sup)
+                    factor_escala = calibrar_con_talla(talla_cm, altura_px)
+                    imagen_anotada = dibujar_altura(imagen_anotada, y_sup, y_inf)
+                    st.caption(
+                        f"Altura en la foto: {altura_px} px · talla {talla_cm:.1f} cm → "
+                        f"{factor_escala:.4f} cm/píxel"
+                    )
+                    if y_sup <= 2 or y_inf >= h - 3:
+                        st.warning("La figura toca el borde de la foto: puede faltar parte de la cabeza o los pies.")
 
-            # Calibración con hoja carta
-            st.markdown("**Calibración con objeto de referencia 3D**")
-            st.info("Ajusta el slider al ancho ocupado por la impresión 3D en la imagen.")
+            with col_img:
+                st.image(imagen_anotada, use_container_width=True,
+                         caption="Puntos detectados · línea amarilla: altura usada para calibrar")
+            imagen_frontal_pdf = imagen_anotada
 
-            usar_escala_manual = st.checkbox("Ingresar escala manualmente (si no está el objeto 3D)")
-            if usar_escala_manual:
-                factor_escala = st.slider(
-                    "Factor de escala (cm/píxel) — ajusta hasta que las medidas sean lógicas",
-                    min_value=0.01, max_value=0.5, value=0.08, step=0.001,
-                    format="%.3f"
-                )
+            if factor_escala is not None:
+                with col_res:
+                    st.markdown("#### Resultados")
+                    dif_hombros = calcular_asimetria_hombros(landmarks, w, h, factor_escala)
+                    if dif_hombros < 0.5:
+                        estado_h, clase_h = "Normal", "status-normal"
+                    elif dif_hombros < 1.5:
+                        estado_h, clase_h = "Leve asimetría", "status-alerta"
+                    else:
+                        estado_h, clase_h = "Derivar a especialista", "status-derivar"
+                    _tarjeta("Asimetría de hombros", f"{dif_hombros:.1f} cm", estado_h, clase_h)
+
+                    dif_piernas = calcular_dismetria_piernas(landmarks, w, h, factor_escala)
+                    if dif_piernas < 0.5:
+                        estado_p, clase_p = "Normal", "status-normal"
+                    elif dif_piernas < 1.5:
+                        estado_p, clase_p = "Leve dismetría", "status-alerta"
+                    else:
+                        estado_p, clase_p = "Derivar a especialista", "status-derivar"
+                    _tarjeta("Dismetría de miembros inferiores", f"{dif_piernas:.1f} cm", estado_p, clase_p)
+
+                    datos.update(
+                        dif_hombros=dif_hombros, estado_hombros=estado_h,
+                        dif_piernas=dif_piernas, estado_piernas=estado_p,
+                    )
+
+    # ── Vista de costado ─────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### Vista de costado")
+    if foto_perfil is None:
+        st.warning("Falta la foto de costado: sin ella no se evalúa la postura cervical.")
+    else:
+        imagen_rgb_p = _leer_imagen(foto_perfil)
+        hp, wp = imagen_rgb_p.shape[:2]
+        landmarks_p, imagen_anotada_p = detectar_landmarks(imagen_rgb_p, vista="perfil")
+
+        col_img_p, col_res_p = st.columns([1.2, 1])
+        with col_img_p:
+            st.image(imagen_anotada_p, use_container_width=True,
+                     caption="Línea oreja → hombro y horizontal de referencia")
+        with col_res_p:
+            if landmarks_p is None:
+                st.error("No se detectó ninguna persona en la foto de costado. Intenta con otra foto.")
             else:
-                h, w = imagen_rgb.shape[:2]
-                ancho_objeto_px = st.slider(
-                    "Ancho del objeto 3D en la foto (píxeles)",
-                    min_value=50, max_value=w, value=int(w * 0.2), step=1
-                )
-                # Cambiado de 21.59 a 28.0 cm para la calibración horizontal
-                factor_escala = 28.0 / ancho_objeto_px
-                st.caption(f"Factor calculado: {factor_escala:.4f} cm/píxel")
-
-    with col_res:
-        st.markdown("#### Resultados de evaluación")
-
-        if landmarks is not None:
-            h, w = imagen_rgb.shape[:2]
-
-            # ── Hombros ──────────────────────────────────────────────────
-            dif_hombros = calcular_asimetria_hombros(landmarks, w, h, factor_escala)
-            if dif_hombros < 0.5:
-                estado_h, clase_h = "Normal", "status-normal"
-            elif dif_hombros < 1.5:
-                estado_h, clase_h = "Leve asimetría", "status-alerta"
-            else:
-                estado_h, clase_h = "Derivar a especialista", "status-derivar"
-
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Asimetría de hombros</div>
-                <div class="metric-value">{dif_hombros:.1f} cm</div>
-                <span class="{clase_h}">{estado_h}</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # ── Piernas ──────────────────────────────────────────────────
-            dif_piernas = calcular_dismetria_piernas(landmarks, w, h, factor_escala)
-            if dif_piernas < 0.5:
-                estado_p, clase_p = "Normal", "status-normal"
-            elif dif_piernas < 1.5:
-                estado_p, clase_p = "Leve dismetría", "status-alerta"
-            else:
-                estado_p, clase_p = "Derivar a especialista", "status-derivar"
-
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Dismetría de miembros inferiores</div>
-                <div class="metric-value">{dif_piernas:.1f} cm</div>
-                <span class="{clase_p}">{estado_p}</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # ── IMC ───────────────────────────────────────────────────────
-            imc = peso_kg / ((talla_cm / 100) ** 2)
-            estado_imc, clase_imc, z_imc = clasificar_imc_oms(imc, edad, sexo)
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">IMC</div>
-                <div class="metric-value">{imc:.1f}</div>
-                <div class="metric-sub">{peso_kg} kg · {talla_cm} cm · z = {z_imc:+.2f}</div>
-                <span class="{clase_imc}">{estado_imc}</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # ── Ángulo cervical (si se marcó perfil) ─────────────────────
-            if eval_perfil:
-                angulo = calcular_angulo_cervical(landmarks, w, h)
-                if angulo is not None:
+                imagen_perfil_pdf = imagen_anotada_p
+                st.markdown("#### Resultados")
+                angulo = calcular_angulo_cervical(landmarks_p, wp, hp)
+                if angulo is None:
+                    st.warning("No se vieron con claridad la oreja y el hombro. Repite la foto con el alumno bien de perfil.")
+                else:
                     if angulo > 50:
                         estado_c, clase_c = "Normal", "status-normal"
                     elif angulo > 40:
                         estado_c, clase_c = "Proyección leve", "status-alerta"
                     else:
                         estado_c, clase_c = "Proyección cervical anterior", "status-derivar"
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="metric-label">Proyección cervical anterior</div>
-                        <div class="metric-value">{angulo:.1f}°</div>
-                        <span class="{clase_c}">{estado_c}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    _tarjeta("Ángulo cervical (oreja–hombro)", f"{angulo:.1f}°", estado_c, clase_c,
+                             sub="Ángulo con la horizontal; menor ángulo = cabeza más adelantada")
+                    datos.update(angulo_cervical=angulo, estado_cervical=estado_c)
 
-            # ── Generar PDF ───────────────────────────────────────────────
-            st.markdown("---")
-            if st.button("📄 Descargar informe PDF"):
-                datos = {
-                    "nombre": nombre or "Sin nombre",
-                    "edad": edad,
-                    "sexo": sexo,
-                    "curso": curso,
-                    "colegio": colegio or "Sin especificar",
-                    "peso": peso_kg,
-                    "talla": talla_cm,
-                    "imc": imc,
-                    "estado_imc": estado_imc,
-                    "z_imc": z_imc,
-                    "dif_hombros": dif_hombros,
-                    "estado_hombros": estado_h,
-                    "dif_piernas": dif_piernas,
-                    "estado_piernas": estado_p,
-                }
-                pdf_bytes = generar_pdf(datos, imagen_anotada)
-                st.download_button(
-                    label="⬇️ Guardar PDF",
-                    data=pdf_bytes,
-                    file_name=f"tamizaje_{nombre or 'paciente'}.pdf",
-                    mime="application/pdf"
-                )
-
-else:
-    st.markdown("""
-    <div style="text-align:center; padding: 3rem; color: #7A8899;">
-        <div style="font-size: 3rem;">📸</div>
-        <p style="font-size: 1rem; margin-top: 0.5rem;">Sube una fotografía para comenzar la evaluación</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # ── IMC y PDF ────────────────────────────────────────────────────────
+    st.markdown("---")
+    col_imc, col_pdf = st.columns([1, 1])
+    with col_imc:
+        _tarjeta("IMC", f"{imc:.1f}", estado_imc, clase_imc,
+                 sub=f"{peso_kg} kg · {talla_cm} cm · z = {z_imc:+.2f}")
+    with col_pdf:
+        if imagen_frontal_pdf is None and imagen_perfil_pdf is None:
+            st.info("El informe PDF estará disponible cuando se detecte al alumno en al menos una foto.")
+        else:
+            pdf_bytes = generar_pdf(datos, imagen_frontal_pdf, imagen_perfil_pdf)
+            st.download_button(
+                label="📄 Descargar informe PDF",
+                data=pdf_bytes,
+                file_name=f"tamizaje_{nombre or 'paciente'}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
